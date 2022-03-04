@@ -4,7 +4,7 @@ let express = require('express');
 let router = express.Router();
 let auth = require('../controllers/auth');
 
-router.get('/', auth.oidc.ensureAuthenticated(), async (req, res) => {
+router.get('/', auth.requiresAuth(), async (req, res) => {
     res.send(await Email.find());
 });
 router.post('/', async (req, res) => {
@@ -19,7 +19,8 @@ router.post('/', async (req, res) => {
     await newEmail.save();
     res.send('Accepted');
 });
-router.delete('/:id', auth.oidc.ensureAuthenticated(), async (req, res) => {
+
+router.delete('/:id', auth.requiresAuth(), async (req, res) => {
     await Email.deleteOne({id: req.params.id});
     res.send('Deleted');
 });

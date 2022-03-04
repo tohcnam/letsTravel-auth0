@@ -4,6 +4,9 @@ const mongoose = require('mongoose');
 const multer = require('multer');
 const dotenv = require('dotenv');
 dotenv.config();
+
+let auth = require('./controllers/auth');
+app.use(auth.oidc);
 const session = require('express-session');
 const url = require('url');
 const fetch = require('node-fetch');
@@ -12,12 +15,10 @@ let postsRouter = require('./routes/posts');
 let callbackRequestsRouter = require('./routes/callback-requests');
 let emailsRouter = require('./routes/emails');
 let Post = require('./models/post').Post;
-let auth = require('./controllers/auth');
-const baseUrl = url.parse(process.env.ISSUER).protocol + '//' + url.parse(process.env.ISSUER).host;
 
 app.set('view engine', 'ejs');
 dotenv.config();
-let connectionString = 'mongodb://travel:Password123@demodb:27017/travel?authSource=travel&w=1';
+let connectionString = 'mongodb://travel:Password123@demodb-auth0:27017/travel?authSource=travel&w=1';
 mongoose.connect(connectionString, { useUnifiedTopology: true, useNewUrlParser: true })
     .catch(error => console.log(error));
 
@@ -30,9 +31,6 @@ app.use(session({
     saveUninitialized: false
 }));
 
-// ExpressOIDC attaches handlers for the /login and /authorization-code/callback routes
-app.use(auth.oidc.router);
-
 let imageStorage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, 'public/images'),
     filename: (req, file, cb) => cb(null, file.originalname)
@@ -41,21 +39,30 @@ app.use(multer({storage: imageStorage}).single('imageFile'));
 
 app.use(express.static('public'));
 
+var ManagementClient = require('auth0').ManagementClient;
+var management = new ManagementClient({
+  token: process.env.API_TOKEN,
+  domain: process.env.AUTH_DOMAIN,
+});
+
 app.use('/posts', postsRouter);
 app.use('/callback-requests', callbackRequestsRouter);
 app.use('/emails', emailsRouter);
 
 app.get('/', (req, res) => {
-    const userinfo = req.userContext && req.userContext.userinfo;
+    const userinfo = req.oidc.user;
     res.render('index', {
-      pageTitle: 'Lets Travel Homepage',
+      pageTitle: process.env.TITLE,
       isLoggedIn: !!userinfo,
       user: userinfo
     });
 })
+app.get('/register', (req, res) => {
+    res.oidc.login({returnTo: '/', authorizationParams: { screen_hint: 'signup' } });
+  }) 
 
 app.get('/sight', async (req, res) => {
-    const userinfo = req.userContext && req.userContext.userinfo;
+    const userinfo = req.oidc.user;
     let id = req.query.id;
     let post = await Post.findOne({id: id});
     let date = new Date(post.date);
@@ -69,11 +76,11 @@ app.get('/sight', async (req, res) => {
     })
 });
 
-app.get('/admin', auth.oidc.ensureAuthenticated(), (req, res) => {
-    const userinfo = req.userContext && req.userContext.userinfo;
+app.get('/admin', auth.requiresAuth(), (req, res) => {
+    const userinfo = req.oidc.user;
     let isLoggedIn = !!userinfo;
 
-    if(isLoggedIn && userinfo.groups && userinfo.groups.indexOf('customAdmins') > -1){
+    if(isLoggedIn && userinfo[process.env.NAMESPACE+"demoAdmin"]){
         res.render('admin', {
             pageTitle: 'Admin Page',
             user: userinfo,
@@ -85,9 +92,15 @@ app.get('/admin', auth.oidc.ensureAuthenticated(), (req, res) => {
     }
 });
 
-app.get('/profile', auth.oidc.ensureAuthenticated(), (req, res) => {
-    const userinfo = req.userContext && req.userContext.userinfo;
-    const tokens = req.userContext && req.userContext.tokens;
+app.get('/profile', auth.requiresAuth(), (req, res) => {
+    const tokens = {
+        "token_type": req.oidc.accessToken.token_type,
+        "expires_in": req.oidc.accessToken.expires_in,
+        "access_token": req.oidc.accessToken.access_token,
+        "refresh_token": req.oidc.refreshToken,
+        "id_token": req.oidc.idToken,
+    }
+    const userinfo = req.oidc.user;
     res.render('profile', {
         pageTitle: 'Profile Page',
         user: userinfo,
@@ -96,59 +109,42 @@ app.get('/profile', auth.oidc.ensureAuthenticated(), (req, res) => {
     });
 });
 
-app.get('/user/:id', auth.oidc.ensureAuthenticated(), async (req, res) => {
-    const userinfo = req.userContext && req.userContext.userinfo;
+app.get('/user/:id', auth.requiresAuth(), async (req, res) => {
+    const userinfo = req.oidc.user;
     let userId = userinfo.sub;
 
-    if(userId === req.params.id){
-        await fetch(baseUrl+'/api/v1/users/'+userId, {
-            method: 'GET', 
-            headers: {
-                "Accept": "application/json", 
-                "Content-Type": "application/json", 
-                "Authorization": 'SSWS ' + process.env.ADMINTOKEN
-            }
+    management.users.get({id: userId})
+        .then((user) => {
+            res.send(JSON.stringify(user))
         })
-        .then((resp) => resp.json())
-        .then((data) => res.send(JSON.stringify(data)))
-        .catch(error => console.log('error', error));
-    }
+        .catch((e) => console.log(e));
+
 });
 
-app.post('/user', auth.oidc.ensureAuthenticated(), async (req, res) => {
-    const userinfo = req.userContext && req.userContext.userinfo;
+app.post('/user', auth.requiresAuth(), async (req, res) => {
+    const userinfo = req.oidc.user;
     let firstName = req.body.firstName;
     let lastName = req.body.lastName;
-    let auth = req.body.auth;
-    let terms = req.body.terms;
+    let mfa = req.body.mfa;
     let userId = userinfo.sub;
 
     if(userId === req.body.userId){
-        await fetch(baseUrl+'/api/v1/users/'+userId, {
-            method: 'POST', 
-            headers: {
-                "Accept": "application/json", 
-                "Content-Type": "application/json", 
-                "Authorization": 'SSWS ' + process.env.ADMINTOKEN
-            }, 
-            body: JSON.stringify({
-                "profile": {
-                    "firstName": firstName,
-                    "lastName": lastName,
-                    "auth": auth, 
-                    "terms": terms
-                }
-            })
-        })
-        .then((resp) => resp.json())
-        .then((data) => res.send('successful'))
-        .catch(error => console.log('error', error));
+
+        let data = {
+            "family_name": lastName, 
+            "given_name": firstName,
+            "name": firstName + " " + lastName,
+            "user_metadata": {"mfa": mfa}
+        }
+        management.users.update({ id: userId }, data)
+            .then((resp) => res.send('successful'))
+            .catch((e) => console.error(e));
     } else
         res.send('denied');
 });
 
 app.get('/registration', async (req, res) => {
-    const userinfo = req.userContext && req.userContext.userinfo;
+    const userinfo = req.oidc.user;
     res.render('registration', {
         pageTitle: 'Registration',
         user: userinfo,

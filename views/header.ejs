@@ -30,23 +30,13 @@
                 <ul class="navbar-nav ml-auto navbar-login">
                     <%if(isLoggedIn){%>
                         <li class="nav-item">
-                        <form method="POST" action="/logout">
+                        <form method="get" action="/logout">
                             <button id="logout-button" data-se="logout" class="btn btn-outline-secondary ">
                             Logout
                             </button>
                         </form>
                         </li>
                     <%}else{%>
-                        <% 
-                            if(process.CUSTOM_LOGIN){
-                                loginAction = "/signin/login"
-                                registrationAction = "/sigin/register"
-                            }else {
-                                loginAction = "/login"
-                                // TODO: fix link
-                                registrationAction = process.env.ISSUER_BASE + "/register"
-                            }    
-                        %>
                         <%if(process.env.CUSTOM_REGISTRATION=="true"){%>
                             <li class="nav-item">
                                 <form method="get" action="/registration">
@@ -55,13 +45,13 @@
                             </li>
                         <%}else{%>
                             <li class="nav-item">
-                                <form method="get" action="<%=registrationAction %>">
+                                <form method="get" action="/register">
                                     <button class="btn btn-outline-secondary register-btn mr-2" type="submit">Register</button>
                                 </form>
                             </li>
                         <%}%>
                         <li class="nav-item">
-                            <form method="get" action="<%=loginAction %>">
+                            <form method="get" action="/login">
                                 <button class="btn btn-outline-secondary log-in-btn" type="submit">Log In</button>
                             </form>
                         </li>
@@ -77,7 +67,7 @@
     <%if(isLoggedIn && user!=null){%>
     <div class="container">
             <div class="alert alert-primary row welcome-text" role="alert">
-                <div class="col-11">Welcome back <strong><%=user.given_name%> <%=user.family_name%></strong>!</div>
+                <div class="col-11">Welcome back <strong><%=user.name%></strong>!</div>
                 <div class="col-1">
                 <form method="get" action="/profile">
                     <button class="btn btn-outline-secondary profile-btn" type="submit">Profile</button>

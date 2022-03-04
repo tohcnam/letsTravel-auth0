@@ -1,40 +1,22 @@
-const { ExpressOIDC } = require('@okta/oidc-middleware');
-const url = require('url');
+const { auth, requiresAuth } = require('express-openid-connect');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const oidcMiddlewareConfig = {}
-if(process.CUSTOM_LOGIN){
-  oidcMiddlewareConfig = {
-      routes: {
-        login: {
-          path: '/signin',
-          viewHandler: (req, res) => {
-            const baseUrl = url.parse(process.env.ISSUER).protocol + '//' + url.parse(process.env.ISSUER).host;
-            // Render your custom login page, you must create this view for your application and use the Okta Sign-In Widget
-            res.render('custom-login', {
-              pageTitle: 'Login Page',
-              csrfToken: req.csrfToken(),
-              baseUrl: baseUrl, 
-              issuer: process.env.ISSUER,
-              redirect_uri: process.env.REDIRECT_URI
-            });
-          }
-        }
-      }
-  };
-}
+// auth router attaches /login, /logout, and /callback routes to the baseURL
+const config = {
+    authRequired: false,
+    auth0Logout: true,
+    secret: 'a long, randomly-generated string stored in env',
+    baseURL: process.env.APPBASEURL,
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    issuerBaseURL: process.env.ISSUER,
+    authorizationParams: {
+      response_type: 'code',
+      scope: process.env.SCOPE,
+      audience: process.env.AUDIENCE,
+    },
+};
 
-
-const oidc = new ExpressOIDC(Object.assign({
-    issuer: process.env.ISSUER,
-    client_id: process.env.CLIENT_ID,
-    client_secret: process.env.CLIENT_SECRET,
-    redirect_uri: process.env.REDIRECT_URI,
-    appBaseUrl: process.env.APPBASEURL,
-    scope: process.env.SCOPE
-}, oidcMiddlewareConfig));   
-
-
-// module.exports = { generateToken, checkToken }; 
-module.exports = { oidc };
+const oidc = auth(config)
+module.exports = { oidc, requiresAuth };

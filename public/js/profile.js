@@ -1,5 +1,4 @@
-let inputTerms = $('#inputTerms');
-let inputAuth = $('#inputAuth');
+let inputMfa = $('#inputMfa');
 let inputLastName = document.querySelector('#inputLastname');
 let inputFirstName = document.querySelector('#inputFirstname');
 let inputEmail = document.querySelector('#staticEmail');
@@ -10,58 +9,26 @@ let divAccessToken = document.querySelector('.accessTokenParsed');
 let idToken = document.querySelector('#id_token');
 let divIdToken = document.querySelector('.idTokenParsed');
 
-// for IDnow demo
-let idnow=false;
-let startVerificationProcess = document.querySelector('.verification-form');
-let idNowID = '';
-let inputVerificationStatus = document.querySelector('#inputVerificationStatus');
-let inputVerificationID = document.querySelector('#inputVerificationID');
-let btnVerificationStart = document.querySelector('.verificationSubmit');
-
 document.addEventListener('DOMContentLoaded', async function(){
     let user = await fetch('/user/'+userId)
     .then((res) => res.json())
     .then((data) => data);
 
-    (user.profile.terms) ? inputTerms.bootstrapToggle('on') : inputTerms.bootstrapToggle('off');
-    (user.profile.auth) ? inputAuth.val(user.profile.auth) : inputAuth.val("password");
-    inputLastName.value = user.profile.lastName;
-    inputFirstName.value = user.profile.firstName;
-    inputEmail.value = user.profile.login;
+    (user.user_metadata.mfa) ? inputMfa.bootstrapToggle('on') : inputMfa.bootstrapToggle('off');
+    inputLastName.value = (user.family_name) ? user.family_name : "";
+    inputFirstName.value = (user.given_name) ? user.given_name : "";
+    inputEmail.value = user.email;
 
     let parsedAccessToken = parseJwt(accessToken.value);
     divAccessToken.textContent = JSON.stringify(parsedAccessToken, undefined, 2);
     let parsedIdToken = parseJwt(idToken.value);
     divIdToken.textContent = JSON.stringify(parsedIdToken, undefined, 2);
-
-    // for IDnow demo
-    if(document.querySelector('#idnow') == 'true'){
-        idnow = true;
-        idNowID = user.profile.idnow_id;
-        inputVerificationID.value = idNowID;
-        let status = user.profile.idnow_status;
-        if(status=='SUCCESS' || status == "SUCCESS_DATA_CHANGED"){
-            inputVerificationStatus.value = status;
-            btnVerificationStart.style.display = "none";
-        } else {
-            inputVerificationStatus.value = "Unidentified";
-            btnVerificationStart.style.display = "block";
-        }
-        // for IDnow demo
-        startVerificationProcess.addEventListener('submit', (e) => {
-            e.preventDefault();
-            let link = 'https://go.idnow.de/oktatestauto/identifications/' + idNowID + '/mobile';
-            window.open(link, '_blank');
-        });
-    } else
-        idnow = false;
 });
 
 submitSettings.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    let authMethod = inputAuth.val();
-    let terms = document.querySelector('#inputTerms').checked;
+    let mfa = document.querySelector('#inputMfa').checked;
     await fetch('/user', {
         method: 'POST', 
         headers: {
@@ -71,8 +38,7 @@ submitSettings.addEventListener('submit', async (e) => {
             userId: userId,
             lastName: inputLastName.value,
             firstName: inputFirstName.value, 
-            auth: authMethod, 
-            terms: terms
+            mfa: mfa
         })
     })
     .then((res) => res.text())

@@ -1,6 +1,6 @@
 {
-  "name": "lets-travel",
-  "version": "1.1.0",
+  "name": "lets-travel-auth0",
+  "version": "1.0.0",
   "description": "Okta sign-in demonstration for CIAM",
   "main": "app.js",
   "scripts": {
@@ -9,13 +9,14 @@
   },
   "keywords": [],
   "author": "Waldemar Rosenfeld <waldemar.rosenfeld@okta.com>",
-  "homepage": "https://github.com/tux-manchot/letsTravel",
+  "homepage": "https://github.com/tux-manchot/letsTravel-auth0",
   "license": "ISC",
   "dependencies": {
-    "@okta/oidc-middleware": "^4.0.2",
+    "auth0": "^2.40.0",
     "dotenv": "^8.2.0",
     "ejs": "^3.1.5",
-    "express": "^4.17.1",
+    "express": "^4.17.3",
+    "express-openid-connect": "^2.7.0",
     "express-session": "^1.17.1",
     "mongoose": "^5.13.14",
     "multer": "^1.4.2",

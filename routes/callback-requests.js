@@ -4,9 +4,10 @@ let express = require('express');
 let router = express.Router();
 let auth = require('../controllers/auth');
 
-router.get('/', auth.oidc.ensureAuthenticated(), async (req, res) => {
+router.get('/', auth.requiresAuth(), async (req, res) => {
     res.send(await CallbackRequest.find());
 });
+
 router.post('/', async (req, res) => {
     let reqBody = req.body;
     let newRequest = new CallbackRequest({
@@ -17,7 +18,8 @@ router.post('/', async (req, res) => {
     await newRequest.save();
     res.send('Accepted');
 });
-router.delete('/:id', auth.oidc.ensureAuthenticated(), async (req, res) => {
+
+router.delete('/:id', auth.requiresAuth(), async (req, res) => {
     await CallbackRequest.deleteOne({id: req.params.id});
     res.send('Deleted');
 });

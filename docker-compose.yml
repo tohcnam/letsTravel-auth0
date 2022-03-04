@@ -1,23 +1,23 @@
 version: "2"
 
 services:
-  demoapp:
+  demoapp-auth0:
     build: .
-    image: demoapp
-    container_name: demoapp
+    image: demoapp-auth0
+    container_name: demoapp-auth0
     links: 
-      - demodb
+      - demodb-auth0
     ports:
       - 3000:3000
     volumes: 
-      - images:/app/public/images
-  demodb:
+      - images-auth0:/app/public/images
+  demodb-auth0:
     build: ./db
-    image: demodb
-    container_name: demodb
+    image: demodb-auth0
+    container_name: demodb-auth0
     volumes: 
-      - mongodb-data:/data/db:rw
+      - mongodb-data-auth0:/data/db:rw
 
 volumes: 
-  mongodb-data:
-  images: 
+  mongodb-data-auth0:
+  images-auth0: 

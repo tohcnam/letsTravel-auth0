@@ -17,7 +17,7 @@ router.get('/:id', async (req, res) => {
     res.send(post);
 });
 
-router.post('/', auth.oidc.ensureAuthenticated(), async (req, res) => {
+router.post('/', auth.requiresAuth(), async (req, res) => {
     let reqBody = req.body;
     let imgPath;
     if(reqBody.imageUrl){
@@ -39,14 +39,14 @@ router.post('/', auth.oidc.ensureAuthenticated(), async (req, res) => {
     res.send('created');
 });
 
-router.delete('/:id', auth.oidc.ensureAuthenticated(), async (req, res) =>{
+router.delete('/:id', auth.requiresAuth(), async (req, res) =>{
     let id = req.params.id;
     await Post.deleteOne({id: id})
     .catch((error) => console.log(error));
     res.send('Deleted!');
 });
 
-router.put('/:id', auth.oidc.ensureAuthenticated(), async (req, res) => {
+router.put('/:id', auth.requiresAuth(), async (req, res) => {
     let id = req.params.id;
     await Post.updateOne({id: id}, req.body)
     .catch((error) => console.log(error));
